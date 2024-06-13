@@ -1,0 +1,26 @@
+name: Deploy to Fly on push to main
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+
+jobs:
+
+  deploy:
+    name: Deploy
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy a docker container to fly.io
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.YRAL_GPU_COMPUTE_TASKS_GITHUB_ACTION_FLY_IO_DEPLOYMENT_TOKEN }}
+
+

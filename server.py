@@ -34,6 +34,7 @@ import jwt
 import grpc
 import ml_server_pb2
 import ml_server_pb2_grpc
+import consts
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ model, preprocess = clip.load("ViT-L/14", device=device)
 
 _AUTH_HEADER_KEY = "authorization"
 
-_PUBLIC_KEY = str.encode(os.environ["ML_SERVER_JWT_PUBLIC_KEY"])
+_PUBLIC_KEY = consts.ML_SERVER_JWT_PUBLIC_KEY
 _JWT_PAYLOAD = {
     "sub": "yral-ml-server",
     "company": "gobazzinga",
@@ -74,6 +75,7 @@ class SignatureValidationInterceptor(grpc.ServerInterceptor):
         if payload == _JWT_PAYLOAD:
             return continuation(handler_call_details)
         else:
+            print(f"Received payload : {payload}")
             return self._abort_handler
 
 
