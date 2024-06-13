@@ -75,7 +75,7 @@ class SignatureValidationInterceptor(grpc.ServerInterceptor):
         if payload == _JWT_PAYLOAD:
             return continuation(handler_call_details)
         else:
-            print(f"Received payload : {payload}")
+            print(f"Received payload: {payload}")
             return self._abort_handler
 
 
