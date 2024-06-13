@@ -1,0 +1,39 @@
+app = 'yral-gpu-compute-tasks'
+primary_region = "ams"         # If you change this, ensure it's to a region that offers GPUs
+# vm.size = "a100-40gb"   # A shorthand for the size preset in the [[vm]] section
+swap_size_mb = 32768   # This enables 32GB swap
+kill_signal = 'SIGINT'
+kill_timeout = '5s'
+
+[build]
+[build.args]
+NONROOT_USER = "pythonuser" # Access this value in the Dockerfile using `ARG NONROOT_USER`
+
+
+[env]
+PORT = '50051'
+
+
+[[services]]
+internal_port = 50051
+protocol = "tcp"
+auto_stop_machines = true
+auto_start_machines = true
+min_machines_running = 0
+
+[[services.ports]]
+handlers = ["tls"]                                                     # "tls"
+tls_options = { "alpn" = ["h2"], "versions" = ["TLSv1.2", "TLSv1.3"] }
+port = 443
+
+[services.concurrency]
+hard_limit = 25
+soft_limit = 20
+
+[[vm]]
+size = "a100-80gb"
+
+[mounts]
+source = "data"
+destination = "/home/pythonuser"
+initial_size = "100gb"

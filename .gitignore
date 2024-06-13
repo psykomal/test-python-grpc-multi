@@ -203,4 +203,3 @@ site
 .venv/src/CLIP/**/thumbs.db
 .venv/src/CLIP/**/.DS_Store
 .venv/src/CLIP/**/.idea
-fly.toml
