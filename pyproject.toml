@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "pymulproc"
+version = "0.1.0"
+description = ""
+authors = ["psykomal <bkomalsai@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+grpcio = "^1.63.0"
+grpcio-tools = "^1.63.0"
+# numpy = "^1.26.4"
+# pillow = "^10.3.0"
+# opencv-python = "^4.9.0.80"
+# requests = "^2.31.0"
+# pyjwt = "^2.8.0"
+torch = "2.2.1"
+clip = { git = "https://github.com/openai/CLIP.git" }
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
