@@ -39,7 +39,7 @@ import consts
 _LOGGER = logging.getLogger(__name__)
 
 _ONE_DAY = datetime.timedelta(days=1)
-_PROCESS_COUNT = 1  # multiprocessing.cpu_count() * 2
+_PROCESS_COUNT = multiprocessing.cpu_count() * 2
 _THREAD_CONCURRENCY = 1
 
 
