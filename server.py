@@ -82,7 +82,7 @@ class SignatureValidationInterceptor(grpc.ServerInterceptor):
 def get_frames(video_path, num_frames=200):
     cap = cv2.VideoCapture(video_path)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    print("total_frames : ", total_frames)
+    # print("total_frames : ", total_frames)
     interval = max(total_frames // num_frames, 1)
     frames = []
 
@@ -105,7 +105,7 @@ def downloadFile(downloadlink, filePath):
     with requests.get(downloadlink, stream=True) as r:
         r.raise_for_status()
 
-        print("Downloading to", os.path.abspath(filePath))
+        # print("Downloading to", os.path.abspath(filePath))
         with open(filePath, "wb") as f:
             for chunk in r.iter_content(chunk_size=8 * 1024):
                 if chunk:
@@ -125,7 +125,7 @@ class MLServer(ml_server_pb2_grpc.MLServerServicer):
         file_path = f"/tmp/{random_str}_{filename}"
         download_video(video_id, file_path)
         frames = get_frames(file_path, 100)
-        print("Number of frames extracted:", len(frames), end="\n\n")
+        # print("Number of frames extracted:", len(frames), end="\n\n")
         frame_images = [Image.fromarray(frame) for frame in frames]
         # create List[Tensor] using preprocess
         preprocess_list: List = [preprocess(frame) for frame in frame_images]

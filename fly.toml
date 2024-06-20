@@ -27,7 +27,7 @@ tls_options = { "alpn" = ["h2"], "versions" = ["TLSv1.2", "TLSv1.3"] }
 port = 443
 
 [services.concurrency]
-hard_limit = 50000
+hard_limit = 20000
 soft_limit = 1000
 
 [[vm]]
