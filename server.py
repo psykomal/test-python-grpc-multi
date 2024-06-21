@@ -193,7 +193,7 @@ def _reserve_port():
 
 
 def main():
-    _LOGGER.info("Using spawn instead of forkserver.")
+    # _LOGGER.info("Using spawn instead of forkserver.")
     multiprocessing.set_start_method("spawn", force=True)
     bind_address = "0.0.0.0:50051"
     _LOGGER.info("Binding to '%s'", bind_address)
