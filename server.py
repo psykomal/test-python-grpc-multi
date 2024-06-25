@@ -43,10 +43,6 @@ _PROCESS_COUNT = multiprocessing.cpu_count()
 _THREAD_CONCURRENCY = 1
 
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model, preprocess = clip.load("ViT-L/14", device=device)
-
-
 _AUTH_HEADER_KEY = "authorization"
 
 _PUBLIC_KEY = consts.ML_SERVER_JWT_PUBLIC_KEY
@@ -54,6 +50,8 @@ _JWT_PAYLOAD = {
     "sub": "yral-ml-server",
     "company": "gobazzinga",
 }
+
+_RANDOM_NUM = random.randint(1, 1000000)
 
 
 class SignatureValidationInterceptor(grpc.ServerInterceptor):
@@ -79,77 +77,15 @@ class SignatureValidationInterceptor(grpc.ServerInterceptor):
             return self._abort_handler
 
 
-def get_frames(video_path, num_frames=200):
-    cap = cv2.VideoCapture(video_path)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    # print("total_frames : ", total_frames)
-    interval = max(total_frames // num_frames, 1)
-    frames = []
-
-    for i in range(0, total_frames, interval):
-        cap.set(cv2.CAP_PROP_POS_FRAMES, i)
-        ret, frame = cap.read()
-        if ret:
-            frames.append(frame)
-
-    cap.release()
-    return frames
-
-
-def download_video(uid, filepath):
-    video_link = f"https://customer-2p3jflss4r4hmpnz.cloudflarestream.com/{uid}/downloads/default.mp4"
-    downloadFile(video_link, filepath)
-
-
-def downloadFile(downloadlink, filePath):
-    with requests.get(downloadlink, stream=True) as r:
-        r.raise_for_status()
-
-        # print("Downloading to", os.path.abspath(filePath))
-        with open(filePath, "wb") as f:
-            for chunk in r.iter_content(chunk_size=8 * 1024):
-                if chunk:
-                    f.write(chunk)
-                    f.flush()
-        f.close()
-
-
 class MLServer(ml_server_pb2_grpc.MLServerServicer):
     def predict(self, request, context):
-        # return ml_server_pb2.VideoEmbedResponse(result=[1.0])
-        video_id = request.video_id
-        filename = f"{video_id}.mp4"
-        random_str = "".join(
-            random.choices(string.ascii_uppercase + string.digits, k=7)
-        )
-        file_path = f"/tmp/{random_str}_{filename}"
-        download_video(video_id, file_path)
-        frames = get_frames(file_path, 100)
-        # print("Number of frames extracted:", len(frames), end="\n\n")
-        frame_images = [Image.fromarray(frame) for frame in frames]
-        # create List[Tensor] using preprocess
-        preprocess_list: List = [preprocess(frame) for frame in frame_images]
-        # Preprocess all frames in the batch and move them to the device
-        preprocessed_images = torch.stack(preprocess_list).to(device)
 
-        # Pass the batch of preprocessed frames through the model to obtain embeddings
-        with torch.no_grad():
-            image_features_batch = model.encode_image(preprocessed_images)
+        # wait for 5 secs
+        time.sleep(5)
 
-        # Convert the embeddings to a numpy array
-        embeddings_array = image_features_batch.cpu().numpy()
+        # _LOGGER.info(multiprocessing.current_process())
 
-        # Calculate the average of all embeddings
-        average_embedding = np.mean(embeddings_array, axis=0)
-        res = average_embedding.tolist()
-
-        # print(average_embedding)
-        # print("average_embedding shape:", average_embedding.shape, res)
-
-        # delete the video file
-        os.remove(file_path)
-
-        return ml_server_pb2.VideoEmbedResponse(result=average_embedding)
+        return ml_server_pb2.VideoEmbedResponse(result=[os.getpid(), _RANDOM_NUM])
 
 
 def _wait_forever(server):
@@ -163,7 +99,12 @@ def _wait_forever(server):
 def _run_server(bind_address):
     """Start a server in a subprocess."""
     _LOGGER.info("Starting new server.")
-    options = (("grpc.so_reuseport", 1),)
+    options = [
+        ("grpc.max_send_message_length", -1),
+        ("grpc.max_receive_message_length", -1),
+        ("grpc.so_reuseport", 1),
+        ("grpc.use_local_subchannel_pool", 1),
+    ]
 
     server = grpc.server(
         futures.ThreadPoolExecutor(
@@ -180,12 +121,12 @@ def _run_server(bind_address):
 
 @contextlib.contextmanager
 def _reserve_port():
-    """Find and reserve a port for all subprocesses to use."""
-    sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    """Find and reserve a port for all subprocesses to use"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     if sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT) == 0:
         raise RuntimeError("Failed to set SO_REUSEPORT.")
-    sock.bind(("", 0))
+    sock.bind(("0.0.0.0", 50051))
     try:
         yield sock.getsockname()[1]
     finally:
@@ -195,19 +136,20 @@ def _reserve_port():
 def main():
     # _LOGGER.info("Using spawn instead of forkserver.")
     multiprocessing.set_start_method("spawn", force=True)
-    bind_address = "0.0.0.0:50051"
-    _LOGGER.info("Binding to '%s'", bind_address)
-    sys.stdout.flush()
-    workers = []
-    for _ in range(_PROCESS_COUNT):
-        # NOTE: It is imperative that the worker subprocesses be forked before
-        # any gRPC servers start up. See
-        # https://github.com/grpc/grpc/issues/16001 for more details.
-        worker = multiprocessing.Process(target=_run_server, args=(bind_address,))
-        worker.start()
-        workers.append(worker)
-    for worker in workers:
-        worker.join()
+    with _reserve_port() as port:
+        bind_address = f"0.0.0.0:{port}"
+        _LOGGER.info("Binding to '%s'", bind_address)
+        sys.stdout.flush()
+        workers = []
+        for _ in range(_PROCESS_COUNT):
+            # NOTE: It is imperative that the worker subprocesses be forked before
+            # any gRPC servers start up. See
+            # https://github.com/grpc/grpc/issues/16001 for more details.
+            worker = multiprocessing.Process(target=_run_server, args=(bind_address,))
+            worker.start()
+            workers.append(worker)
+        for worker in workers:
+            worker.join()
 
 
 if __name__ == "__main__":

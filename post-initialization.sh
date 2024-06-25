@@ -32,4 +32,9 @@ pip install -r requirements.txt
 
 ls
 
+
+ulimit -n 500000
+echo "executed ulimit"
+ulimit -a
+
 sh ./run.sh
